@@ -7,6 +7,13 @@ import matplotlib.pyplot as plt
 import os
 import io
 
+def remove_all_paragraphs(doc):
+    """
+    Noņem visus paragrafus no dokumenta, lai novērstu tukšas lapas.
+    """
+    for p in doc.paragraphs:
+        p._element.getparent().remove(p._element)
+
 def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     """
     Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
@@ -21,6 +28,7 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     """
     # Inicializē izvadītāja dokumentu
     output_doc = Document()
+    remove_all_paragraphs(output_doc)  # Noņem tukšo paragrafu
 
     for index, row in csv_data.iterrows():
         # Nolasām šablonu
