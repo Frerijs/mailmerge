@@ -51,10 +51,25 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
         else:
             first_record = False
         
-        # Pievienojam saturu izvadītāja dokumentam
-        for element in doc.element.body:
-            output_doc.element.body.append(element)
-    
+        # Pievienojam saturu manuāli
+        for para in doc.paragraphs:
+            # Izveidojam jaunu paragrafu ar tādu pašu stilu un tekstu
+            p = output_doc.add_paragraph()
+            p.style = para.style
+            for run in para.runs:
+                r = p.add_run(run.text)
+                r.bold = run.bold
+                r.italic = run.italic
+                r.underline = run.underline
+        
+        for table in doc.tables:
+            # Izveidojam jaunu tabulu ar tādu pašu kolonnu skaitu
+            table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
+            for row_table in table.rows:
+                cells = table_copy.add_row().cells
+                for i, cell in enumerate(row_table.cells):
+                    cells[i].text = cell.text
+
     # Saglabājam izvadītāja dokumentu
     output_doc.save(output_path)
     return output_path
