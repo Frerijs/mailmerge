@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 import os
 import io
 
-def remove_all_paragraphs(doc):
+def clear_document(doc):
     """
-    Noņem visus paragrafus no dokumenta, lai novērstu tukšas lapas.
+    Noņem visus elementus no dokumenta, lai sagatavotu to satura pievienošanai.
     """
-    for p in doc.paragraphs:
-        p._element.getparent().remove(p._element)
+    for element in doc.element.body[:]:
+        doc.element.body.remove(element)
 
 def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     """
@@ -26,9 +26,11 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     Returns:
         str: Izvades faila ceļš.
     """
-    # Inicializē izvadītāja dokumentu
+    # Inicializē izvadītāja dokumentu un noņem visus saturus
     output_doc = Document()
-    remove_all_paragraphs(output_doc)  # Noņem tukšo paragrafu
+    clear_document(output_doc)
+
+    first_record = True
 
     for index, row in csv_data.iterrows():
         # Nolasām šablonu
@@ -40,14 +42,18 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 placeholder = f'{{{{{key}}}}}'
                 if placeholder in paragraph.text:
                     paragraph.text = paragraph.text.replace(placeholder, str(value))
+                    # Pievienojam diagnostikas ziņojumu
+                    st.write(f"Aizvietots {placeholder} ar {value}")
+        
+        # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
+        if not first_record:
+            output_doc.add_page_break()
+        else:
+            first_record = False
         
         # Pievienojam saturu izvadītāja dokumentam
         for element in doc.element.body:
             output_doc.element.body.append(element)
-        
-        # Pievienojam lappuses pārtraukumu starp ierakstiem, ja nav pēdējais
-        if index < len(csv_data) - 1:
-            output_doc.add_page_break()
     
     # Saglabājam izvadītāja dokumentu
     output_doc.save(output_path)
@@ -66,6 +72,10 @@ def main():
             data = pd.read_csv(uploaded_file)
             st.write("CSV Saturs:")
             st.dataframe(data)
+            
+            # Parādām direktorijas saturu (diagnostika)
+            st.write("Current working directory:", os.getcwd())
+            st.write("Files in directory:", os.listdir('.'))
             
             # Parādām dažas vizualizācijas
             st.header("Datu Vizualizācijas")
