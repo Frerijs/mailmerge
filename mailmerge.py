@@ -16,7 +16,7 @@ def clear_document(doc):
 
 def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     """
-    Veic mail merge, izmantojot Word šablonu un CSV datiem, un saglabā visus rezultātus vienā .docx failā.
+    Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
 
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
