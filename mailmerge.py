@@ -51,7 +51,10 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                         paragraph.text = paragraph.text.replace(placeholder, replacement)
                         # Pievienojam diagnostikas ziņojumu
                         st.write(f"Aizvietots {placeholder} ar {replacement}")
-
+                    else:
+                        # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
+                        st.write(f"Vietturs {placeholder} netika atrasts paragrafā.")
+        
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
             output_doc.add_page_break()
