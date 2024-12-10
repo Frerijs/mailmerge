@@ -1,3 +1,42 @@
+# streamlit_app.py
+
+import streamlit as st
+import pandas as pd
+from docxtpl import DocxTemplate
+import matplotlib.pyplot as plt
+import os
+import csv  # Pievieno šo rindu, lai novērstu 'csv' is not defined kļūdu
+
+def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
+    """
+    Veic mail merge, izmantojot DocxTemplate, un saglabā rezultātus vienā .docx failā.
+
+    Args:
+        template_path (str): Ceļš uz Word šablonu (`template.docx`).
+        csv_data (pd.DataFrame): Pandas DataFrame ar CSV datiem.
+        output_path (str): Ceļš uz izvadītāja .docx failu.
+    
+    Returns:
+        str: Izvades faila ceļš vai None, ja kļūda radās.
+    """
+    try:
+        # Ielādējam šablonu
+        doc = DocxTemplate(template_path)
+
+        # Sagatavojam kontekstu
+        context = {'entries': csv_data.to_dict(orient='records')}
+
+        # Veicam renderēšanu
+        doc.render(context)
+
+        # Saglabājam gala dokumentu
+        doc.save(output_path)
+        return output_path
+
+    except Exception as e:
+        st.error(f"Kļūda veicot mail merge ar docxtpl: {e}")
+        return None
+
 def main():
     st.title("Mail Merge Lietotne")
 
@@ -102,5 +141,8 @@ def main():
                                 file_name="merged_documents.docx",
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             )
-    except Exception as e:
-        st.error(f"Kļūda apstrādājot CSV failu: {e}")
+        except Exception as e:
+            st.error(f"Kļūda apstrādājot CSV failu: {e}")
+
+if __name__ == "__main__":
+    main()
