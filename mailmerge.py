@@ -104,7 +104,7 @@ def main():
             
             # Definējam CSV kolonnu nosaukumu un placeholder atbilstību
             csv_column_to_placeholder = {
-                "Vārds uzvārds/\nosaukums": "Vārds_uzvārds_nosaukums",
+           #     "Vārds uzvārds/\nosaukums": "Vārds_uzvārds_nosaukums",
                 "Adrese": "Adrese",
                 "kadapz": "kadapz",
                 "Nekustamā īpašuma nosaukums": "Nekustamā_īpašuma_nosaukums",
