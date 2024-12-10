@@ -6,6 +6,7 @@ from docxtpl import DocxTemplate
 import matplotlib.pyplot as plt
 import os
 import copy
+import csv
 
 def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
     """
