@@ -7,9 +7,7 @@ from docx import Document
 import os
 import csv  # Šis imports ir nepieciešams, lai izmantotu csv moduli
 from io import BytesIO
-import zipfile
 from docxcompose.composer import Composer
-from docx import Document
 
 def clean_address_field(address):
     """
@@ -87,23 +85,6 @@ def merge_word_documents(file_paths, merged_output_path):
         st.success(f"Apvienotais dokuments saglabāts kā: {merged_output_path}")
     except Exception as e:
         st.error(f"Kļūda apvienojot dokumentus: {e}")
-
-def create_zip_file(file_paths):
-    """
-    Izveido ZIP failu no norādītajiem dokumentiem.
-    
-    Args:
-        file_paths (list): Failu ceļu saraksts.
-    
-    Returns:
-        BytesIO: ZIP faila saturu kā BytesIO objekts.
-    """
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file in file_paths:
-            zip_file.write(file, os.path.basename(file))
-    zip_buffer.seek(0)
-    return zip_buffer
 
 def main():
     st.title("Mail Merge Lietotne ar docxtpl un docxcompose")
@@ -190,20 +171,30 @@ def main():
                         merged_document_path = os.path.join(output_dir, "apvienotais_dokuments.docx")
                         merge_word_documents(output_paths, merged_document_path)
 
-                        # Sagatavojam sarakstu ar visiem dokumentiem, ieskaitot apvienoto
-                        output_paths_with_merged = output_paths + [merged_document_path]
+                        # Sagatavojam apvienotā dokumenta saturu lejupielādei
+                        if os.path.exists(merged_document_path):
+                            with open(merged_document_path, "rb") as f:
+                                merged_file = BytesIO(f.read())
+                            
+                            st.download_button(
+                                label="Lejupielādēt Apvienoto Dokumentu",
+                                data=merged_file,
+                                file_name="apvienotais_dokuments.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+                            
+                            st.info("Lejupielādējiet apvienoto dokumentu `apvienotais_dokuments.docx`.")
 
-                        # Izveidojam ZIP failu ar visiem dokumentiem
-                        zip_buffer = create_zip_file(output_paths_with_merged)
-                        
-                        st.download_button(
-                            label="Lejupielādēt Merged Dokumentus (ZIP)",
-                            data=zip_buffer,
-                            file_name="merged_documents.zip",
-                            mime="application/zip"
-                        )
-                        
-                        st.info("ZIP fails satur atsevišķos dokumentus un apvienoto dokumentu `apvienotais_dokuments.docx`.")
+                            # Dzēšam atsevišķos dokumentus, lai paliktu tikai ar apvienoto dokumentu
+                            for file in output_paths:
+                                try:
+                                    os.remove(file)
+                                except Exception as e:
+                                    st.warning(f"Neizdevās dzēst failu {file}: {e}")
+                            
+                            st.success("Atsevišķie dokumenti tika veiksmīgi dzēsti.")
+                    else:
+                        st.error("Nav izveidoti nekādi dokumenti pēc mail merge procesa.")
         except pd.errors.ParserError as e:
             st.error(f"CSV Parsing Kļūda: {e}")
         except Exception as e:
