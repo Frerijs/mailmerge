@@ -5,7 +5,7 @@ import pandas as pd
 from docxtpl import DocxTemplate
 import matplotlib.pyplot as plt
 import os
-import csv  # Pievieno šo rindu, lai novērstu 'csv' is not defined kļūdu
+import csv  # Importējam csv moduli
 
 def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
     """
@@ -20,17 +20,20 @@ def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
         str: Izvades faila ceļš vai None, ja kļūda radās.
     """
     try:
-        # Ielādējam šablonu
+        st.write(f"Veicot mail merge ar šablonu: {template_path}")
         doc = DocxTemplate(template_path)
-
+        
         # Sagatavojam kontekstu
         context = {'entries': csv_data.to_dict(orient='records')}
-
+        st.write("Sagatavoju kontekstu:", context)
+        
         # Veicam renderēšanu
         doc.render(context)
-
+        st.write("Renderēšana veiksmīgi pabeigta.")
+        
         # Saglabājam gala dokumentu
         doc.save(output_path)
+        st.write(f"Dokuments saglabāts: {output_path}")
         return output_path
 
     except Exception as e:
