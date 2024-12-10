@@ -3,14 +3,12 @@
 import streamlit as st
 import pandas as pd
 from docxtpl import DocxTemplate
-import matplotlib.pyplot as plt  # Importējam matplotlib
 import os
-import io
 import csv
 
 def perform_mail_merge(template_path, csv_data, output_path):
     """
-    Veic mail merge, izmantojot docxtpl, un saglabā visus rezultātus vienā .docx failā.
+    Veic mail merge, izmantojot docxtpl, un saglabā rezultātu vienā .docx failā.
 
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
@@ -73,20 +71,7 @@ def main():
             # Definējam kolonnu nosaukumu karti
             csv_column_to_placeholder = {
                 "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
-                "Adrese": "Adrese",
-                "Vieta": "Vieta",
-                "Uzņēmums": "Uzņēmums",
-                "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
-                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1",
-                "Pagasts_un_Novads": "Pagasts_un_Novads",
-                "kadapz": "kadapz",
-                "uzruna": "uzruna",
-                "Tikšanās_datums": "Tikšanās_datums",
-                "Tikšanās_vieta_un_laiks": "Tikšanās_vieta_un_laiks",
-                "Mērnieks_Telefons": "Mērnieks_Telefons",
-                "Mērnieks_Vārds_Uzvārds": "Mērnieks_Vārds_Uzvārds",
-                "Sagatavotājs_Vārds_Uzvārds_Telefons": "Sagatavotājs_Vārds_Uzvārds_Telefons",
-                "Sagatavotājs_e_pasts": "Sagatavotājs_e_pasts"
+                "Adrese": "Adrese"
             }
 
             # Veicam kolonnu nosaukumu pārveidi ar manuālu kartēšanu
@@ -113,21 +98,9 @@ def main():
                 st.write("#### Piemērs no CSV datiem:")
                 st.write(data.head())
 
-                # Parādām direktorijas saturu (diagnostika)
-                st.write("### Current working directory:", os.getcwd())
-                st.write("### Files in directory:", os.listdir('.'))
-
-                # Parādām dažas vizualizācijas
-                st.header("Datu Vizualizācijas")
-
-                numeric_columns = data.select_dtypes(include=['int64', 'float64']).columns
-                if not numeric_columns.empty:
-                    selected_column = st.selectbox("Izvēlieties kolonnas vizualizācijai", numeric_columns)
-                    fig, ax = plt.subplots()
-                    data[selected_column].hist(ax=ax)
-                    st.pyplot(fig)
-                else:
-                    st.write("Nav pieejamu skaitlisku kolonnu vizualizācijai.")
+                # Pārbaudām, vai marķieri ir pareizi aizvietoti
+                context = {'records': data.to_dict(orient='records')}
+                st.write("### Context Data:", context)
 
                 # Veicam mail merge
                 if st.button("Veikt Mail Merge"):
