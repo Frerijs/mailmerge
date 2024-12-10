@@ -26,13 +26,20 @@ def perform_mail_merge(template_path, csv_data, output_path):
 
     # Pārveidojam CSV datus par sarakstu vārdnīcām
     records = csv_data.to_dict(orient='records')
+    st.write("### Records:", records)  # Debugging line
 
     context = {
         'records': records
     }
 
     try:
+        st.write("### Šablona XML Pirms Renderēšanas:")
+        st.write(template.get_xml())
+
         template.render(context)
+
+        st.write("### Šablona XML Pēc Renderēšanas:")
+        st.write(template.get_xml())
     except Exception as e:
         st.error(f"Neizdevās renderēt šablonu: {e}")
         return None
