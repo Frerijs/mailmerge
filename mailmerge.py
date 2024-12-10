@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
+import matplotlib.pyplot as plt  # Pievienots matplotlib imports
 import os
 import io
 import csv
@@ -35,13 +36,13 @@ def perform_mail_merge(template_path, csv_data, output_path):
     #     {{ page_break }}
     #   {% endif %}
     # {% endfor %}
-    
-    # Definējam lappuses pārtraukuma funkciju
-    def page_break():
-        return InlineImage(template, 'page_break.png', width=Mm(0))  # Pārliecinieties, ka šablonā ir vietturs priekš lappuses pārtraukuma
 
-    # Sagatavojam kontekstu ar lappuses pārtraukumu
-    # Šeit pieņemam, ka šablonā ir vietturs {{ page_break }} kas tiks aizvietots ar lappuses pārtraukumu
+    # Definējam lappuses pārtraukuma funkciju
+    # Šī funkcija var būt nepieciešama, lai pievienotu lappuses pārtraukumu. Tā var tikt izmantota šablonā.
+    def page_break():
+        # Piemēram, varat izmantot kādu simbolu vai attēlu kā vietturs lappuses pārtraukumam
+        return '\n\n\n'  # Vienkāršs piemērs ar atstarpēm
+
     context['page_break'] = page_break()
 
     # Renderējam šablonu ar kontekstu
