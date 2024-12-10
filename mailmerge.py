@@ -44,15 +44,13 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 # Definējam gan {{key}}, gan {[key]} formātus
                 placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
                 for placeholder in placeholders:
-                    if placeholder in paragraph.text:
-                        # Visus NaN jau ir aizvietoti ar "nav", bet vēlreiz pārbaudām drošībai
-                        replacement = str(value)
-                        paragraph.text = paragraph.text.replace(placeholder, replacement)
-                        # Pievienojam diagnostikas ziņojumu
-                        st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
-                    else:
-                        # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
-                        st.write(f"Vietturs `{placeholder}` netika atrasts paragrafā.")
+                    for run in paragraph.runs:
+                        if placeholder in run.text:
+                            # Visus NaN jau ir aizvietoti ar "nav", bet vēlreiz pārbaudām drošībai
+                            replacement = str(value)
+                            run.text = run.text.replace(placeholder, replacement)
+                            # Pievienojam diagnostikas ziņojumu
+                            st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
 
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
