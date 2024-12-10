@@ -62,6 +62,40 @@ def perform_mail_merge(template_path, records, output_dir):
 
     return output_paths
 
+def merge_word_documents(file_paths, merged_output_path):
+    """
+    Apvieno vairākus Word dokumentus vienā dokumentā ar lapu pārtraukumiem.
+
+    Args:
+        file_paths (list): Saraksts ar Word dokumentu ceļiem, kas jāapvieno.
+        merged_output_path (str): Ceļš, kur saglabāt apvienoto dokumentu.
+    """
+    if not file_paths:
+        st.error("Nav dokumentu, kas varētu tikt apvienoti.")
+        return
+
+    merged_document = Document()
+
+    for idx, file in enumerate(file_paths):
+        try:
+            sub_doc = Document(file)
+            # Pievienojam saturu no sub_doc
+            for element in sub_doc.element.body:
+                merged_document.element.body.append(element)
+            
+            # Pievienojam lapu pārtraukumu, ja tas nav pēdējais dokuments
+            if idx < len(file_paths) - 1:
+                merged_document.add_page_break()
+        except Exception as e:
+            st.error(f"Kļūda apvienojot dokumentu {file}: {e}")
+            continue
+
+    try:
+        merged_document.save(merged_output_path)
+        st.success(f"Apvienotais dokuments saglabāts kā: {merged_output_path}")
+    except Exception as e:
+        st.error(f"Kļūda saglabājot apvienoto dokumentu: {e}")
+
 def create_zip_file(file_paths):
     """
     Izveido ZIP failu no norādītajiem dokumentiem.
@@ -161,7 +195,12 @@ def main():
                         st.success(f"Mail merge veiksmīgi pabeigts! Izveidotie dokumenti: {len(output_paths)}")
                         
                         # Izveidojam ZIP failu ar izveidotajiem dokumentiem
-                        zip_buffer = create_zip_file(output_paths)
+                        # Pievienojam apvienoto dokumentu
+                        merged_document_path = os.path.join(output_dir, "apvienotais_dokuments.docx")
+                        merge_word_documents(output_paths, merged_document_path)
+                        output_paths_with_merged = output_paths + [merged_document_path]
+
+                        zip_buffer = create_zip_file(output_paths_with_merged)
                         
                         st.download_button(
                             label="Lejupielādēt Merged Dokumentus (ZIP)",
@@ -169,6 +208,8 @@ def main():
                             file_name="merged_documents.zip",
                             mime="application/zip"
                         )
+                        
+                        st.info("ZIP fails satur atsevišķos dokumentus un apvienoto dokumentu `apvienotais_dokuments.docx`.")
         except pd.errors.ParserError as e:
             st.error(f"CSV Parsing Kļūda: {e}")
         except Exception as e:
