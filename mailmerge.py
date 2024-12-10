@@ -18,7 +18,7 @@ def clear_document(doc):
 
 def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     """
-    Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
+    Veic mail merge, izmantojot Word šablonu un CSV datiem, un saglabā visus rezultātus vienā .docx failā.
 
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
@@ -45,8 +45,11 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
                 for placeholder in placeholders:
                     if placeholder in paragraph.text:
-                        # Visus NaN jau ir aizvietoti ar "nav", bet vēlreiz pārbaudām drošībai
-                        replacement = str(value)
+                        # Pārbaudām, vai vērtība nav NaN, ja tā ir, aizvietojam ar "nav"
+                        if pd.isna(value):
+                            replacement = "nav"
+                        else:
+                            replacement = str(value)
                         paragraph.text = paragraph.text.replace(placeholder, replacement)
                         # Pievienojam diagnostikas ziņojumu
                         st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
@@ -72,12 +75,21 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 r.underline = run.underline
 
         for table in doc.tables:
-            # Izveidojam jaunu tabulu ar tādu pašu kolonnu skaitu
-            table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
-            for row_table in table.rows:
-                cells = table_copy.add_row().cells
-                for i, cell in enumerate(row_table.cells):
-                    cells[i].text = cell.text
+            try:
+                if len(table.columns) == 0:
+                    st.warning("Tabula bez kolonnu. Pārtraucam tabulas apstrādi.")
+                    continue
+
+                table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
+                for row_table in table.rows:
+                    new_row = table_copy.add_row().cells
+                    for i, cell in enumerate(row_table.cells):
+                        if i < len(new_row):
+                            new_row[i].text = cell.text
+                        else:
+                            st.warning(f"Pārsniegts kolonnu skaits tabulā. Rindas numurs: {index}, Šūnu numurs: {i}")
+            except Exception as e:
+                st.error(f"Kļūda apstrādājot tabulu: {e}")
 
     # Saglabājam izvadītāja dokumentu
     output_doc.save(output_path)
