@@ -2,11 +2,10 @@
 
 import streamlit as st
 import pandas as pd
-from docxtpl import DocxTemplate, InlineImage
-from docx.shared import Mm
+from docxtpl import DocxTemplate
+from docx import Document
 import matplotlib.pyplot as plt
 import os
-import io
 import csv
 import re
 
@@ -18,48 +17,48 @@ def perform_mail_merge(template_path, csv_data, output_path):
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
         csv_data (pd.DataFrame): Pandas DataFrame ar CSV datiem.
         output_path (str): Ceļš uz izvadītāja .docx failu.
-    
+
     Returns:
         str: Izvades faila ceļš.
     """
-    # Inicializē izvadītāja dokumentu kā šablonu
-    doc = DocxTemplate(template_path)
+    # Inicializē izvadītāja dokumentu
+    output_doc = Document()
 
-    context = {}
-    
-    # Saglabājam katra ieraksta aizvietoto saturu
-    merged_content = []
+    first_record = True
 
     for index, row in csv_data.iterrows():
+        # Nolasām šablonu
+        doc = DocxTemplate(template_path)
+
         # Sagatavo kontekstu, aizvietojot NaN ar 'nav'
         context = {key: (str(value) if pd.notna(value) else "nav") for key, value in row.items()}
-        st.write(f"Aizvieto `{context}`")
+
+        st.write(f"Aizvieto ar datiem: {context}")
 
         # Renderē šablonu ar kontekstu
         doc.render(context)
 
-        # Saglabā uz pagaidu failu
+        # Saglabā renderēto dokumentu uz pagaidu failu
         temp_output = f"temp_{index}.docx"
         doc.save(temp_output)
-        merged_content.append(temp_output)
 
-    # Apvieno visus pagaidu failus vienā dokumentā ar lappuses pārtraukumiem
-    from docx import Document
-    output_doc = Document()
+        # Nolasām renderēto pagaidu dokumentu
+        sub_doc = Document(temp_output)
 
-    for i, file in enumerate(merged_content):
-        sub_doc = Document(file)
-        
-        if i > 0:
+        # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
+        if not first_record:
             output_doc.add_page_break()
-        
+        else:
+            first_record = False
+
+        # Pievienojam saturu no renderētā dokumenta uz izvadītāja dokumentu
         for element in sub_doc.element.body:
             output_doc.element.body.append(element)
-        
-        # Dzēš pagaidu failu
-        os.remove(file)
 
-    # Saglabā apvienoto dokumentu
+        # Dzēšam pagaidu failu
+        os.remove(temp_output)
+
+    # Saglabājam izvadītāja dokumentu
     output_doc.save(output_path)
     return output_path
 
@@ -88,12 +87,12 @@ def main():
 
             # Definējam kolonnu nosaukumu karti
             csv_column_to_placeholder = {
-                "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
+                "Vārds_Uzvārds_nosaukums": "Vārds_Uzvārds_nosaukums",
                 "Adrese": "Adrese",
                 "kadapz": "kadapz",
                 "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
                 "uzruna": "uzruna",
-                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1",
                 "Uzņēmums": "Uzņēmums",
                 "Vieta": "Vieta",
                 "Pagasts_un_Novads": "Pagasts_un_Novads",
