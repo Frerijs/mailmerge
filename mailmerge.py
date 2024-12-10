@@ -6,90 +6,55 @@ from docxtpl import DocxTemplate
 from docx import Document
 from docx.enum.text import WD_BREAK
 import os
-import csv
-from io import StringIO, BytesIO
-import zipfile
+from io import BytesIO
 
 def clean_address_field(address):
-    """
-    Tīra 'Adrese' lauku, aizvietojot rindiņu pārtraukumus ar komatiem.
-    
-    Args:
-        address (str): Oriģinālais adrese kā virkne.
-    
-    Returns:
-        str: Izlabotais adrese bez rindiņu pārtraukumiem.
-    """
     if isinstance(address, str):
         return address.replace('\n', ', ').replace('\r', ', ').strip()
     return address
 
-def perform_mail_merge(template_path, records, output_dir):
-    """
-    Veic mail merge katram ierakstam atsevišķā dokumentā.
-    
-    Args:
-        template_path (str): Ceļš uz Word šablonu (`template.docx`).
-        records (list of dict): Saraksts ar vārdnīcām katram ierakstam.
-        output_dir (str): Ceļš uz izvadīgo direktoriju.
-    
-    Returns:
-        list: Izvadīgo dokumentu ceļu saraksts.
-    """
-    output_paths = []
+def perform_mail_merge_single_document(template_path, records, output_path):
     try:
         template = DocxTemplate(template_path)
     except Exception as e:
         st.error(f"Neizdevās ielādēt šablonu: {e}")
-        return output_paths
+        return False
 
     for idx, record in enumerate(records):
         try:
             context = record.copy()
-            # Tīram 'Adrese' lauku
             context['Adrese'] = clean_address_field(context['Adrese'])
-            
-            # Renderējam šablonu ar kontekstu
             template.render(context)
-            
-            # Saglabājam izvadīgo dokumentu
-            output_path = os.path.join(output_dir, f"merged_document_{idx+1}.docx")
-            template.save(output_path)
-            output_paths.append(output_path)
+            if idx == 0:
+                template.save(output_path)
+            else:
+                # Pievienojam lappuses pārtraukumu un ierakstu
+                doc = Document(output_path)
+                doc.add_page_break()
+                new_doc = DocxTemplate(template_path)
+                new_doc.render(context)
+                temp_path = os.path.join("temp.docx")
+                new_doc.save(temp_path)
+                temp_doc = Document(temp_path)
+                for element in temp_doc.element.body:
+                    doc.element.body.append(element)
+                doc.save(output_path)
+                os.remove(temp_path)
         except Exception as e:
             st.error(f"Kļūda renderējot ierakstu {idx+1}: {e}")
             continue
 
-    return output_paths
-
-def create_zip_file(file_paths):
-    """
-    Izveido ZIP failu no norādītajiem failiem.
-    
-    Args:
-        file_paths (list): Failu ceļu saraksts.
-    
-    Returns:
-        BytesIO: ZIP faila saturu kā BytesIO objekts.
-    """
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file in file_paths:
-            zip_file.write(file, os.path.basename(file))
-    zip_buffer.seek(0)
-    return zip_buffer
+    return True
 
 def main():
     st.title("Mail Merge Lietotne ar docxtpl")
 
     st.sidebar.header("Iestatījumi")
 
-    # Augšupielādējam CSV failu
     uploaded_file = st.file_uploader("Augšupielādējiet CSV failu", type=["csv"])
 
     if uploaded_file is not None:
         try:
-            # Nolasām CSV ar pandas, izmantojot pareizās opcijas
             data = pd.read_csv(
                 uploaded_file,
                 encoding='utf-8',
@@ -100,14 +65,11 @@ def main():
             st.write("### CSV Saturs:")
             st.dataframe(data)
 
-            # Pārbaudām CSV kolonnas nosaukumus pirms pārveides
             st.write("### CSV Kolonnas Pirms Pārveides:", data.columns.tolist())
 
-            # Automātiska kolonnu nosaukumu pārveide ar regex: aizvieto jebkuru neatbilstīgu rakstzīmi ar zemessvītri
             data.columns = data.columns.str.replace(r'[^\w]+', '_', regex=True)
             st.write("### Atjauninātās Kolonnas Pēc Pārveides:", data.columns.tolist())
 
-            # Definējam kolonnu nosaukumu karti
             csv_column_to_placeholder = {
                 "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
                 "Adrese": "Adrese",
@@ -126,49 +88,40 @@ def main():
                 "Sagatavotājs_e_pasts": "Sagatavotājs_e_pasts"
             }
 
-            # Veicam kolonnu nosaukumu pārveidi ar manuālu kartēšanu
             data.rename(columns=csv_column_to_placeholder, inplace=True)
             st.write("### Kolonnu Nosaukumi Pēc Manuālās Pārveides:", data.columns.tolist())
 
-            # Aizvietojam visus NaN ar "nav"
             data.fillna("nav", inplace=True)
             st.write("### CSV Saturs Pēc NaN Aizvietošanas:", data.head())
 
-            # Definējam nepieciešamās kolonnu nosaukumus pēc pārveides
             required_columns = list(csv_column_to_placeholder.values())
 
-            # Pārbaudām, vai visi nepieciešamie kolonnu nosaukumi ir klāt
             missing_columns = set(required_columns) - set(data.columns)
             if missing_columns:
                 st.error(f"Trūkst kolonnas: {missing_columns}")
             else:
                 st.success("Visas nepieciešamās kolonnas ir klāt pēc pārveides.")
 
-                # Pārveidojam CSV datus par sarakstu vārdnīcām
                 records = data.to_dict(orient='records')
                 st.write("### Ieraksti:", records)
 
-                # Veicam mail merge procesu, izveidojot atsevišķus dokumentus katram ierakstam
                 if st.button("Veikt Mail Merge"):
-                    template_path = "template.docx"  # Pārliecinieties, ka template.docx ir pieejams
-                    output_dir = "output_documents"
-                    if not os.path.exists(output_dir):
-                        os.makedirs(output_dir)
+                    template_path = "template.docx"
+                    output_path = "merged_documents.docx"
 
-                    output_paths = perform_mail_merge(template_path, records, output_dir)
+                    success = perform_mail_merge_single_document(template_path, records, output_path)
 
-                    if output_paths:
-                        st.success(f"Mail merge veiksmīgi pabeigts! Izveidotie dokumenti: {len(output_paths)}")
+                    if success:
+                        st.success(f"Mail merge veiksmīgi pabeigts! Izveidots dokuments: {output_path}")
                         
-                        # Izveidojam ZIP failu ar izveidotajiem dokumentiem
-                        zip_buffer = create_zip_file(output_paths)
-                        
-                        st.download_button(
-                            label="Lejupielādēt Merged Dokumentus (ZIP)",
-                            data=zip_buffer,
-                            file_name="merged_documents.zip",
-                            mime="application/zip"
-                        )
+                        with open(output_path, "rb") as f:
+                            file_bytes = f.read()
+                            st.download_button(
+                                label="Lejupielādēt Merged Dokumentu",
+                                data=file_bytes,
+                                file_name="merged_documents.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
         except pd.errors.ParserError as e:
             st.error(f"CSV Parsing Kļūda: {e}")
         except Exception as e:
