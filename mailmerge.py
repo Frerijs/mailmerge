@@ -5,8 +5,7 @@ import pandas as pd
 from docxtpl import DocxTemplate
 import matplotlib.pyplot as plt
 import os
-import copy
-import csv
+import csv  # Pievieno šo rindu, lai novērstu 'csv' is not defined kļūdu
 
 def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
     """
@@ -20,29 +19,23 @@ def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
     Returns:
         str: Izvades faila ceļš.
     """
-    merged_documents = []
-    doc_template = DocxTemplate(template_path)
+    try:
+        # Ielādējam šablonu
+        doc = DocxTemplate(template_path)
 
-    for index, row in csv_data.iterrows():
-        context = row.to_dict()
-        doc_copy = copy.deepcopy(doc_template)
-        doc_copy.render(context)
-        merged_documents.append(doc_copy)
+        # Sagatavojam kontekstu
+        context = {'entries': csv_data.to_dict(orient='records')}
 
-    # Saglabā visus dokumentus vienā failā ar lappuses pārtraukumiem
-    final_doc = DocxTemplate(template_path)
-    
-    # Notīram saturu
-    final_doc.docx.element.body.clear_content()
+        # Veicam renderēšanu
+        doc.render(context)
 
-    for i, doc in enumerate(merged_documents):
-        for element in doc.docx.element.body:
-            final_doc.docx.element.body.append(copy.deepcopy(element))
-        if i < len(merged_documents) - 1:
-            final_doc.docx.add_page_break()
+        # Saglabājam gala dokumentu
+        doc.save(output_path)
+        return output_path
 
-    final_doc.save(output_path)
-    return output_path
+    except Exception as e:
+        st.error(f"Kļūda veicot mail merge ar docxtpl: {e}")
+        return None
 
 def main():
     st.title("Mail Merge Lietotne")
@@ -134,21 +127,22 @@ def main():
                         os.makedirs(output_dir)
                     
                     output_path = os.path.join(output_dir, "merged_documents.docx")
-                    perform_mail_merge_with_docxtpl(template_path, data, output_path)
+                    merge_result = perform_mail_merge_with_docxtpl(template_path, data, output_path)
                     
-                    st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
-                    
-                    # Parādām lejupielādes saiti
-                    with open(output_path, "rb") as f:
-                        file_bytes = f.read()
-                        st.download_button(
-                            label="Lejupielādēt Merged Dokumentu",
-                            data=file_bytes,
-                            file_name="merged_documents.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
-        except Exception as e:
-            st.error(f"Kļūda apstrādājot CSV failu: {e}")
+                    if merge_result:
+                        st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
+                        
+                        # Parādām lejupielādes saiti
+                        with open(output_path, "rb") as f:
+                            file_bytes = f.read()
+                            st.download_button(
+                                label="Lejupielādēt Merged Dokumentu",
+                                data=file_bytes,
+                                file_name="merged_documents.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+    except Exception as e:
+        st.error(f"Kļūda apstrādājot CSV failu: {e}")
 
 if __name__ == "__main__":
     main()
