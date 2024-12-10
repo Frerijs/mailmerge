@@ -1,11 +1,10 @@
-# streamlit_app.py
-
 import streamlit as st
 import pandas as pd
 from docx import Document
 import matplotlib.pyplot as plt
 import os
 import io
+import csv
 
 def clear_document(doc):
     """
@@ -51,10 +50,6 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                         paragraph.text = paragraph.text.replace(placeholder, replacement)
                         # Pievienojam diagnostikas ziņojumu
                         st.write(f"Aizvietots {placeholder} ar {replacement}")
-                    else:
-                        # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
-                        st.write(f"Vietturs {placeholder} netika atrasts paragrafā.")
-
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
             output_doc.add_page_break()
@@ -94,22 +89,26 @@ def main():
     
     if uploaded_file is not None:
         try:
-            # Nolasām CSV ar pareizu kodējumu
-            data = pd.read_csv(uploaded_file, encoding='utf-8')
+            # Nolasām CSV ar pareizu kodējumu un Python engine, lai labāk apstrādātu multi-line fields
+            data = pd.read_csv(uploaded_file, encoding='utf-8', engine='python', quoting=csv.QUOTE_ALL)
             st.write("CSV Saturs:")
             st.dataframe(data)
             
             # Pārbaudām CSV kolonnas nosaukumus
             st.write("CSV Kolonnas:", data.columns)
             
+            # Automātiska kolonnu nosaukumu pārveide: aizvieto atstarpes, slīpsvītras un līnijas pārtraukumus ar zemessvītrām
+            data.columns = data.columns.str.replace(' ', '_').str.replace('/', '_').str.replace('\n', '_')
+            st.write("Atjauninātās Kolonnas:", data.columns)
+            
             # Definējam CSV kolonnu nosaukumu un placeholder atbilstību
             csv_column_to_placeholder = {
-           #     "Vārds uzvārds/\nosaukums": "Vārds_uzvārds_nosaukums",
+                "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
                 "Adrese": "Adrese",
                 "kadapz": "kadapz",
-                "Nekustamā īpašuma nosaukums": "Nekustamā_īpašuma_nosaukums",
+                "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
                 "uzruna": "uzruna",
-                "Atrasts Zemes Vienības Kadastra Apzīmējums lapā 1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
                 "Uzņēmums": "Uzņēmums",
                 "Vieta": "Vieta",
                 "Pagasts_un_Novads": "Pagasts_un_Novads",
@@ -128,7 +127,13 @@ def main():
             else:
                 # Veicam kolonnu nosaukumu pārveidi
                 data.rename(columns=csv_column_to_placeholder, inplace=True)
-                st.write("Atjauninātās Kolonnas:", data.columns)
+                st.write("Atjauninātās Kolonnas pēc Pārveides:", data.columns)
+                
+                # Pārbaudām, vai visi vietturi ir aizvietoti
+                st.write("Pārbaudām vietturu aizvietošanu:")
+                # Pārbaudām, vai CSV dati ir pareizi
+                st.write("Piemērs no CSV datiem:")
+                st.write(data.head())
                 
                 # Parādām direktorijas saturu (diagnostika)
                 st.write("Current working directory:", os.getcwd())
