@@ -2,46 +2,15 @@
 
 import streamlit as st
 import pandas as pd
-from docx import Document
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 import matplotlib.pyplot as plt
 import os
 import io
 import csv
 import re
 
-def replace_placeholders(doc, row):
-    """
-    Aizvieto vietturu dokumentā, saglabājot noformējumu.
-
-    Args:
-        doc (Document): Word dokumenta objekts.
-        row (pd.Series): Datu rinda no CSV.
-    """
-    for paragraph in doc.paragraphs:
-        for key, value in row.items():
-            placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
-            for placeholder in placeholders:
-                if placeholder in paragraph.text:
-                    inline = paragraph.runs
-                    for run in inline:
-                        if placeholder in run.text:
-                            run.text = run.text.replace(placeholder, str(value))
-                            st.write(f"Aizvietots `{placeholder}` ar `{value}`")
-    for table in doc.tables:
-        for row_table in table.rows:
-            for cell in row_table.cells:
-                for paragraph in cell.paragraphs:
-                    for key, value in row.items():
-                        placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
-                        for placeholder in placeholders:
-                            if placeholder in paragraph.text:
-                                inline = paragraph.runs
-                                for run in inline:
-                                    if placeholder in run.text:
-                                        run.text = run.text.replace(placeholder, str(value))
-                                        st.write(f"Aizvietots `{placeholder}` ar `{value}` tabulā")
-
-def perform_mail_merge_single_doc(template_path, csv_data, output_path):
+def perform_mail_merge(template_path, csv_data, output_path):
     """
     Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
 
@@ -53,38 +22,49 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     Returns:
         str: Izvades faila ceļš.
     """
-    # Inicializē izvadītāja dokumentu un saglabā šablona stilu un struktūru
-    template_doc = Document(template_path)
-    output_doc = Document()
+    # Inicializē izvadītāja dokumentu kā šablonu
+    doc = DocxTemplate(template_path)
 
-    # Kopē šablona stilu no šablona uz izvadītāja dokumentu
-    output_doc.styles = template_doc.styles
-
-    first_record = True
+    context = {}
+    
+    # Saglabājam katra ieraksta aizvietoto saturu
+    merged_content = []
 
     for index, row in csv_data.iterrows():
-        # Nolasām šablonu
-        doc = Document(template_path)
+        # Sagatavo kontekstu, aizvietojot NaN ar 'nav'
+        context = {key: (str(value) if pd.notna(value) else "nav") for key, value in row.items()}
+        st.write(f"Aizvieto `{context}`")
+
+        # Renderē šablonu ar kontekstu
+        doc.render(context)
+
+        # Saglabā uz pagaidu failu
+        temp_output = f"temp_{index}.docx"
+        doc.save(temp_output)
+        merged_content.append(temp_output)
+
+    # Apvieno visus pagaidu failus vienā dokumentā ar lappuses pārtraukumiem
+    from docx import Document
+    output_doc = Document()
+
+    for i, file in enumerate(merged_content):
+        sub_doc = Document(file)
         
-        # Aizvietojam placeholderus ar CSV datiem, saglabājot formatējumu
-        replace_placeholders(doc, row)
-
-        # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
-        if not first_record:
+        if i > 0:
             output_doc.add_page_break()
-        else:
-            first_record = False
-
-        # Pievienojam saturu no šablona pēc aizvietošanas
-        for element in doc.element.body:
+        
+        for element in sub_doc.element.body:
             output_doc.element.body.append(element)
+        
+        # Dzēš pagaidu failu
+        os.remove(file)
 
-    # Saglabājam izvadītāja dokumentu
+    # Saglabā apvienoto dokumentu
     output_doc.save(output_path)
     return output_path
 
 def main():
-    st.title("Mail Merge Lietotne")
+    st.title("Mail Merge Lietotne ar DocxTemplate")
 
     st.sidebar.header("Iestatījumi")
 
@@ -173,7 +153,7 @@ def main():
                         os.makedirs(output_dir)
                     
                     output_path = os.path.join(output_dir, "merged_documents.docx")
-                    perform_mail_merge_single_doc(template_path, data, output_path)
+                    perform_mail_merge(template_path, data, output_path)
                     
                     st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
                     
