@@ -87,7 +87,7 @@ def main():
 
             # Definējam kolonnu nosaukumu karti
             csv_column_to_placeholder = {
-                "Vārds_Uzvārds_nosaukums": "Vārds_Uzvārds_nosaukums",
+               # "Vārds_Uzvārds_nosaukums": "Vārds_Uzvārds_nosaukums",
                 "Adrese": "Adrese",
                 "kadapz": "kadapz",
                 "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
