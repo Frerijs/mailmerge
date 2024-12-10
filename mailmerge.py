@@ -70,7 +70,7 @@ def main():
                 "kadapz": "kadapz",
                 "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
                 "uzruna": "uzruna",
-                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
                 "Uzņēmums": "Uzņēmums",
                 "Vieta": "Vieta",
                 "Pagasts_un_Novads": "Pagasts_un_Novads",
