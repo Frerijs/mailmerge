@@ -2,24 +2,14 @@
 
 import streamlit as st
 import pandas as pd
-from docx import Document
+from docxtpl import DocxTemplate
 import matplotlib.pyplot as plt
 import os
-import io
-import csv
-import re
 import copy
 
-def clear_document(doc):
+def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
     """
-    Noņem visus elementus no dokumenta, lai sagatavotu to satura pievienošanai.
-    """
-    for element in doc.element.body[:]:
-        doc.element.body.remove(element)
-
-def perform_mail_merge_single_doc(template_path, csv_data, output_path):
-    """
-    Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
+    Veic mail merge, izmantojot DocxTemplate, un saglabā rezultātus vienā .docx failā.
 
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
@@ -29,72 +19,28 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     Returns:
         str: Izvades faila ceļš.
     """
-    # Inicializē izvadītāja dokumentu un noņem visus saturus
-    output_doc = Document()
-    clear_document(output_doc)
-
-    first_record = True
+    merged_documents = []
+    doc_template = DocxTemplate(template_path)
 
     for index, row in csv_data.iterrows():
-        # Nolasām šablonu
-        doc = Document(template_path)
-        
-        # Aizvietojam placeholderus ar CSV datiem
-        for paragraph in doc.paragraphs:
-            for key, value in row.items():
-                # Definējam gan {{key}}, gan {[key]} formātus
-                placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
-                for placeholder in placeholders:
-                    if placeholder in paragraph.text:
-                        # Aizvietojam ar "nav", ja vērtība ir NaN
-                        replacement = "nav" if pd.isna(value) else str(value)
-                        paragraph.text = paragraph.text.replace(placeholder, replacement)
-                        # Pievienojam diagnostikas ziņojumu
-                        st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
-                    else:
-                        # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
-                        st.write(f"Vietturs `{placeholder}` netika atrasts paragrafā.")
+        context = row.to_dict()
+        doc_copy = copy.deepcopy(doc_template)
+        doc_copy.render(context)
+        merged_documents.append(doc_copy)
 
-        # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
-        if not first_record:
-            output_doc.add_page_break()
-        else:
-            first_record = False
+    # Saglabā visus dokumentus vienā failā ar lappuses pārtraukumiem
+    final_doc = DocxTemplate(template_path)
+    
+    # Notīram saturu
+    final_doc.docx.element.body.clear_content()
 
-        # Pievienojam saturu manuāli, saglabājot formatējumu
-        for para in doc.paragraphs:
-            # Izveidojam jaunu paragrafu ar tādu pašu stilu un tekstu
-            p = output_doc.add_paragraph()
-            p.style = para.style
-            for run in para.runs:
-                r = p.add_run(run.text)
-                r.bold = run.bold
-                r.italic = run.italic
-                r.underline = run.underline
+    for i, doc in enumerate(merged_documents):
+        for element in doc.docx.element.body:
+            final_doc.docx.element.body.append(copy.deepcopy(element))
+        if i < len(merged_documents) - 1:
+            final_doc.docx.add_page_break()
 
-        for table in doc.tables:
-            try:
-                # Pārbaudām, vai tabula satur kolonnu skaitu
-                if len(table.columns) == 0:
-                    st.warning("Tabula bez kolonnu. Pārtraucam tabulas apstrādi.")
-                    continue
-
-                # Izveidojam jaunu tabulu ar tādu pašu kolonnu skaitu
-                table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
-                for row_table in table.rows:
-                    # Pievienojam jaunu rindu
-                    new_row = table_copy.add_row().cells
-                    for i, cell in enumerate(row_table.cells):
-                        if i < len(new_row):
-                            # Izmantojam deepcopy, lai saglabātu formatējumu
-                            new_row[i].text = cell.text
-                        else:
-                            st.warning(f"Pārsniegts kolonnu skaits tabulā. Rindas numurs: {index}, Šūnu numurs: {i}")
-            except Exception as e:
-                st.error(f"Kļūda apstrādājot tabulu: {e}")
-
-    # Saglabājam izvadītāja dokumentu
-    output_doc.save(output_path)
+    final_doc.save(output_path)
     return output_path
 
 def main():
@@ -187,7 +133,7 @@ def main():
                         os.makedirs(output_dir)
                     
                     output_path = os.path.join(output_dir, "merged_documents.docx")
-                    perform_mail_merge_single_doc(template_path, data, output_path)
+                    perform_mail_merge_with_docxtpl(template_path, data, output_path)
                     
                     st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
                     
