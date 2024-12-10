@@ -39,18 +39,20 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
         # Aizvietojam placeholderus ar CSV datiem
         for paragraph in doc.paragraphs:
             for key, value in row.items():
-                placeholder = f'{{{{{key}}}}}'
-                if placeholder in paragraph.text:
-                    paragraph.text = paragraph.text.replace(placeholder, str(value))
-                    # Pievienojam diagnostikas ziņojumu
-                    st.write(f"Aizvietots {placeholder} ar {value}")
-        
+                # Definējam gan {{key}}, gan {[key]} formātus
+                placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
+                for placeholder in placeholders:
+                    if placeholder in paragraph.text:
+                        paragraph.text = paragraph.text.replace(placeholder, str(value))
+                        # Pievienojam diagnostikas ziņojumu
+                        st.write(f"Aizvietots {placeholder} ar {value}")
+
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
             output_doc.add_page_break()
         else:
             first_record = False
-        
+
         # Pievienojam saturu manuāli
         for para in doc.paragraphs:
             # Izveidojam jaunu paragrafu ar tādu pašu stilu un tekstu
@@ -61,7 +63,7 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 r.bold = run.bold
                 r.italic = run.italic
                 r.underline = run.underline
-        
+
         for table in doc.tables:
             # Izveidojam jaunu tabulu ar tādu pašu kolonnu skaitu
             table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
