@@ -7,6 +7,32 @@ from docx import Document
 from docx.enum.text import WD_BREAK
 import os
 import csv
+from io import StringIO
+
+def fix_csv_content(csv_content):
+    """
+    Izlabo CSV saturu, aizvietojot iekšējos citātus ar divām pēdiņām.
+    
+    Args:
+        csv_content (str): Oriģinālais CSV saturs kā virkne.
+    
+    Returns:
+        str: Izlabotais CSV saturs.
+    """
+    corrected_csv = StringIO()
+    reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL, skipinitialspace=True)
+    writer = csv.writer(corrected_csv, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+    
+    for row in reader:
+        new_row = []
+        for field in row:
+            # Escapējiet iekšējos citātus ar divām pēdiņām
+            if '"' in field:
+                field = field.replace('"', '""')
+            new_row.append(field)
+        writer.writerow(new_row)
+    
+    return corrected_csv.getvalue()
 
 def perform_mail_merge(template_path, csv_data, output_path):
     """
@@ -84,9 +110,19 @@ def main():
 
     if uploaded_file is not None:
         try:
-            # Nolasām CSV ar pareizu kodējumu un Python engine, lai labāk apstrādātu multi-line fields
-            data = pd.read_csv(uploaded_file, encoding='utf-8', engine='python', quoting=csv.QUOTE_ALL, skip_blank_lines=False)
-            st.write("### CSV Saturs:")
+            # Iegūstam CSV saturu kā virkne
+            raw_csv = uploaded_file.getvalue().decode('utf-8')
+            st.write("### Oriģinālais CSV Saturs:")
+            st.text(raw_csv)
+
+            # Izlabojam CSV saturu
+            corrected_csv = fix_csv_content(raw_csv)
+            st.write("### Izlabotais CSV Saturs:")
+            st.text(corrected_csv)
+
+            # Nolasām izlaboto CSV saturu ar pandas
+            data = pd.read_csv(StringIO(corrected_csv), encoding='utf-8', engine='python', quoting=csv.QUOTE_ALL, skip_blank_lines=False)
+            st.write("### CSV Saturs pēc Izlabojuma:")
             st.dataframe(data)
 
             # Pārbaudām CSV kolonnas nosaukumus pirms pārveides
