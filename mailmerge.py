@@ -1,3 +1,5 @@
+# streamlit_app.py
+
 import streamlit as st
 import pandas as pd
 from docx import Document
@@ -43,11 +45,8 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
                 for placeholder in placeholders:
                     if placeholder in paragraph.text:
-                        # Pārbaudām, vai vērtība nav NaN, ja tā ir, aizvietojam ar tukšu stringu
-                        if pd.isna(value):
-                            replacement = ""
-                        else:
-                            replacement = str(value)
+                        # Visus NaN jau ir aizvietoti ar "nav", bet vēlreiz pārbaudām drošībai
+                        replacement = str(value)
                         paragraph.text = paragraph.text.replace(placeholder, replacement)
                         # Pievienojam diagnostikas ziņojumu
                         st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
@@ -129,6 +128,10 @@ def main():
             # Veicam kolonnu nosaukumu pārveidi ar manuālu kartēšanu
             data.rename(columns=csv_column_to_placeholder, inplace=True)
             st.write("### Kolonnu Nosaukumi Pēc Manuālās Pārveides:", data.columns.tolist())
+
+            # Aizvietojam visus NaN ar "nav"
+            data.fillna("nav", inplace=True)
+            st.write("### CSV Saturs Pēc NaN Aizvietošanas:", data.head())
 
             # Definējam nepieciešamās kolonnu nosaukumus pēc pārveides
             required_columns = list(csv_column_to_placeholder.values())
