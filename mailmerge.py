@@ -3,7 +3,6 @@
 import streamlit as st
 import pandas as pd
 from docxtpl import DocxTemplate
-from docx.shared import Mm
 import matplotlib.pyplot as plt  # Importējam matplotlib
 import os
 import io
@@ -21,22 +20,31 @@ def perform_mail_merge(template_path, csv_data, output_path):
     Returns:
         str: Izvades faila ceļš.
     """
-    template = DocxTemplate(template_path)
-    
-    # Pārvēršam CSV datus par sarakstu vārdnīcām
+    try:
+        template = DocxTemplate(template_path)
+    except Exception as e:
+        st.error(f"Neizdevās ielādēt šablonu: {e}")
+        return None
+
+    # Pārveidojam CSV datus par sarakstu vārdnīcām
     records = csv_data.to_dict(orient='records')
 
     context = {
-        'records': records,
-        # Pievienojam lappuses pārtraukuma marķieri, izmantojot Unicode simbola kodu
-        'page_break': '\n\n\n'  # Varat izmantot arī citu metodi lappuses pārtraukuma ievietošanai
+        'records': records
     }
 
-    # Renderējam šablonu ar kontekstu
-    template.render(context)
+    try:
+        template.render(context)
+    except Exception as e:
+        st.error(f"Neizdevās renderēt šablonu: {e}")
+        return None
 
-    # Saglabājam izvadītāja dokumentu
-    template.save(output_path)
+    try:
+        template.save(output_path)
+    except Exception as e:
+        st.error(f"Neizdevās saglabāt izvadīgo dokumentu: {e}")
+        return None
+
     return output_path
 
 def main():
@@ -66,17 +74,17 @@ def main():
             csv_column_to_placeholder = {
                 "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
                 "Adrese": "Adrese",
-                "kadapz": "kadapz",
-                "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
-                "uzruna": "uzruna",
-                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1",
-                "Uzņēmums": "Uzņēmums",
                 "Vieta": "Vieta",
+                "Uzņēmums": "Uzņēmums",
+                "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1",
                 "Pagasts_un_Novads": "Pagasts_un_Novads",
-                "Tikšanās_vieta_un_laiks": "Tikšanās_vieta_un_laiks",
+                "kadapz": "kadapz",
+                "uzruna": "uzruna",
                 "Tikšanās_datums": "Tikšanās_datums",
-                "Mērnieks_Vārds_Uzvārds": "Mērnieks_Vārds_Uzvārds",
+                "Tikšanās_vieta_un_laiks": "Tikšanās_vieta_un_laiks",
                 "Mērnieks_Telefons": "Mērnieks_Telefons",
+                "Mērnieks_Vārds_Uzvārds": "Mērnieks_Vārds_Uzvārds",
                 "Sagatavotājs_Vārds_Uzvārds_Telefons": "Sagatavotājs_Vārds_Uzvārds_Telefons",
                 "Sagatavotājs_e_pasts": "Sagatavotājs_e_pasts"
             }
@@ -129,19 +137,20 @@ def main():
                         os.makedirs(output_dir)
                     
                     output_path = os.path.join(output_dir, "merged_documents.docx")
-                    perform_mail_merge(template_path, data, output_path)
+                    result = perform_mail_merge(template_path, data, output_path)
                     
-                    st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
-                    
-                    # Parādām lejupielādes saiti
-                    with open(output_path, "rb") as f:
-                        file_bytes = f.read()
-                        st.download_button(
-                            label="Lejupielādēt Merged Dokumentu",
-                            data=file_bytes,
-                            file_name="merged_documents.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
+                    if result:
+                        st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
+                        
+                        # Parādām lejupielādes saiti
+                        with open(output_path, "rb") as f:
+                            file_bytes = f.read()
+                            st.download_button(
+                                label="Lejupielādēt Merged Dokumentu",
+                                data=file_bytes,
+                                file_name="merged_documents.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
         except Exception as e:
             st.error(f"Kļūda apstrādājot CSV failu: {e}")
 
