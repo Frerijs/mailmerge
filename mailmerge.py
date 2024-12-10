@@ -2,89 +2,57 @@
 
 import streamlit as st
 import pandas as pd
-from docx import Document
-import matplotlib.pyplot as plt
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 import os
 import io
 import csv
-import re
 
-def clear_document(doc):
+def perform_mail_merge(template_path, csv_data, output_path):
     """
-    Noņem visus elementus no dokumenta, lai sagatavotu to satura pievienošanai.
-    """
-    for element in doc.element.body[:]:
-        doc.element.body.remove(element)
-
-def perform_mail_merge_single_doc(template_path, csv_data, output_path):
-    """
-    Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
+    Veic mail merge, izmantojot docxtpl, un saglabā visus rezultātus vienā .docx failā.
 
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
         csv_data (pd.DataFrame): Pandas DataFrame ar CSV datiem.
         output_path (str): Ceļš uz izvadītāja .docx failu.
-    
+
     Returns:
         str: Izvades faila ceļš.
     """
-    # Inicializē izvadītāja dokumentu un noņem visus saturus
-    output_doc = Document()
-    clear_document(output_doc)
+    template = DocxTemplate(template_path)
+    
+    context = {
+        'records': csv_data.to_dict(orient='records')
+    }
 
-    first_record = True
+    # Pievieno lappuses pārtraukumu starp ierakstiem
+    # Lai to izdarītu, šablonā jāizmanto Jinja2 loop ar lappuses pārtraukumu pēc katra ieraksta
+    # Piemēram:
+    # {% for record in records %}
+    #   [Šeit ieraksta saturs]
+    #   {% if not loop.last %}
+    #     {{ page_break }}
+    #   {% endif %}
+    # {% endfor %}
+    
+    # Definējam lappuses pārtraukuma funkciju
+    def page_break():
+        return InlineImage(template, 'page_break.png', width=Mm(0))  # Pārliecinieties, ka šablonā ir vietturs priekš lappuses pārtraukuma
 
-    for index, row in csv_data.iterrows():
-        # Nolasām šablonu
-        doc = Document(template_path)
-        
-        # Aizvietojam placeholderus ar CSV datiem
-        for paragraph in doc.paragraphs:
-            for key, value in row.items():
-                # Definējam gan {{key}}, gan {[key]} formātus
-                placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
-                for placeholder in placeholders:
-                    if placeholder in paragraph.text:
-                        # Visus NaN jau ir aizvietoti ar "nav", bet vēlreiz pārbaudām drošībai
-                        replacement = str(value)
-                        paragraph.text = paragraph.text.replace(placeholder, replacement)
-                        # Pievienojam diagnostikas ziņojumu
-                        st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
-                    else:
-                        # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
-                        st.write(f"Vietturs `{placeholder}` netika atrasts paragrafā.")
+    # Sagatavojam kontekstu ar lappuses pārtraukumu
+    # Šeit pieņemam, ka šablonā ir vietturs {{ page_break }} kas tiks aizvietots ar lappuses pārtraukumu
+    context['page_break'] = page_break()
 
-        # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
-        if not first_record:
-            output_doc.add_page_break()
-        else:
-            first_record = False
-
-        # Pievienojam saturu manuāli
-        for para in doc.paragraphs:
-            # Izveidojam jaunu paragrafu ar tādu pašu stilu un tekstu
-            p = output_doc.add_paragraph()
-            p.style = para.style
-            for run in para.runs:
-                r = p.add_run(run.text)
-                r.bold = run.bold
-                r.italic = run.italic
-                r.underline = run.underline
-
-        for table in doc.tables:
-            # Izveidojam jaunu tabulu ar tādu pašu kolonnu skaitu
-            table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
-            for row_table in table.rows:
-                cells = table_copy.add_row().cells
-                for i, cell in enumerate(row_table.cells):
-                    cells[i].text = cell.text
+    # Renderējam šablonu ar kontekstu
+    template.render(context)
 
     # Saglabājam izvadītāja dokumentu
-    output_doc.save(output_path)
+    template.save(output_path)
     return output_path
 
 def main():
-    st.title("Mail Merge Lietotne")
+    st.title("Mail Merge Lietotne ar docxtpl")
 
     st.sidebar.header("Iestatījumi")
 
@@ -113,7 +81,7 @@ def main():
                 "kadapz": "kadapz",
                 "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
                 "uzruna": "uzruna",
-                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1",
                 "Uzņēmums": "Uzņēmums",
                 "Vieta": "Vieta",
                 "Pagasts_un_Novads": "Pagasts_un_Novads",
@@ -173,7 +141,7 @@ def main():
                         os.makedirs(output_dir)
                     
                     output_path = os.path.join(output_dir, "merged_documents.docx")
-                    perform_mail_merge_single_doc(template_path, data, output_path)
+                    perform_mail_merge(template_path, data, output_path)
                     
                     st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
                     
