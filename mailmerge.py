@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import io
 import csv
+import re
 
 def clear_document(doc):
     """
@@ -51,10 +52,10 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                             replacement = str(value)
                         paragraph.text = paragraph.text.replace(placeholder, replacement)
                         # Pievienojam diagnostikas ziņojumu
-                        st.write(f"Aizvietots {placeholder} ar {replacement}")
+                        st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
                     else:
                         # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
-                        st.write(f"Vietturs {placeholder} netika atrasts paragrafā.")
+                        st.write(f"Vietturs `{placeholder}` netika atrasts paragrafā.")
 
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
@@ -87,27 +88,27 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
 
 def main():
     st.title("Mail Merge Lietotne")
-    
+
     st.sidebar.header("Iestatījumi")
-    
+
     # Augšupielādējam CSV failu
     uploaded_file = st.file_uploader("Augšupielādējiet CSV failu", type=["csv"])
-    
+
     if uploaded_file is not None:
         try:
             # Nolasām CSV ar pareizu kodējumu un Python engine, lai labāk apstrādātu multi-line fields
             data = pd.read_csv(uploaded_file, encoding='utf-8', engine='python', quoting=csv.QUOTE_ALL)
-            st.write("CSV Saturs:")
+            st.write("### CSV Saturs:")
             st.dataframe(data)
             
-            # Pārbaudām CSV kolonnas nosaukumus
-            st.write("CSV Kolonnas:", data.columns)
-            
-            # Automātiska kolonnu nosaukumu pārveide: aizvieto atstarpes, slīpsvītras un līnijas pārtraukumus ar zemessvītrām
-            data.columns = data.columns.str.replace(' ', '_').str.replace('/', '_').str.replace('\n', '_')
-            st.write("Atjauninātās Kolonnas:", data.columns)
-            
-            # Definējam placeholder atbilstību (no sanitized column names uz tiem pašiem, lai nav nepieciešama kartēšana)
+            # Pārbaudām CSV kolonnas nosaukumus pirms pārveides
+            st.write("### CSV Kolonnas Pirms Pārveides:", data.columns.tolist())
+
+            # Automātiska kolonnu nosaukumu pārveide ar regex: aizvieto jebkuru neatbilstīgu rakstzīmi ar zemessvītri
+            data.columns = data.columns.str.replace(r'[^\w]', '_', regex=True)
+            st.write("### Atjauninātās Kolonnas Pēc Pārveides:", data.columns.tolist())
+
+            # Definējam kolonnu nosaukumu karti
             csv_column_to_placeholder = {
                 "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
                 "Adrese": "Adrese",
@@ -125,29 +126,34 @@ def main():
                 "Sagatavotājs_Vārds_Uzvārds_Telefons": "Sagatavotājs_Vārds_Uzvārds_Telefons",
                 "Sagatavotājs_e_pasts": "Sagatavotājs_e_pasts"
             }
-            
-            # Pārbaudām, vai visi nepieciešamie kolonnu nosaukumi ir presenti
-            missing_columns = set(csv_column_to_placeholder.keys()) - set(data.columns)
+
+            # Veicam kolonnu nosaukumu pārveidi ar manuālu kartēšanu
+            data.rename(columns=csv_column_to_placeholder, inplace=True)
+            st.write("### Kolonnu Nosaukumi Pēc Manuālās Pārveides:", data.columns.tolist())
+
+            # Definējam nepieciešamās kolonnu nosaukumus pēc pārveides
+            required_columns = list(csv_column_to_placeholder.values())
+
+            # Pārbaudām, vai visi nepieciešamie kolonnu nosaukumi ir klāt
+            missing_columns = set(required_columns) - set(data.columns)
             if missing_columns:
                 st.error(f"Trūkst kolonnas: {missing_columns}")
             else:
-                # Veicam kolonnu nosaukumu pārveidi
-                data.rename(columns=csv_column_to_placeholder, inplace=True)
-                st.write("Atjauninātās Kolonnas pēc Pārveides:", data.columns)
-                
-                # Pārbaudām, vai visi vietturi ir aizvietoti
-                st.write("Pārbaudām vietturu aizvietošanu:")
-                # Pārbaudām, vai CSV dati ir pareizi
-                st.write("Piemērs no CSV datiem:")
+                st.success("Visas nepieciešamās kolonnas ir klāt pēc pārveides.")
+
+                # Turpināsim ar mail merge procesu
+                st.write("### Pārbaudām vietturu aizvietošanu:")
+                # Parādām dažas CSV datu rindas
+                st.write("#### Piemērs no CSV datiem:")
                 st.write(data.head())
-                
+
                 # Parādām direktorijas saturu (diagnostika)
-                st.write("Current working directory:", os.getcwd())
-                st.write("Files in directory:", os.listdir('.'))
-                
+                st.write("### Current working directory:", os.getcwd())
+                st.write("### Files in directory:", os.listdir('.'))
+
                 # Parādām dažas vizualizācijas
                 st.header("Datu Vizualizācijas")
-                
+
                 numeric_columns = data.select_dtypes(include=['int64', 'float64']).columns
                 if not numeric_columns.empty:
                     selected_column = st.selectbox("Izvēlieties kolonnas vizualizācijai", numeric_columns)
@@ -156,7 +162,7 @@ def main():
                     st.pyplot(fig)
                 else:
                     st.write("Nav pieejamu skaitlisku kolonnu vizualizācijai.")
-                
+
                 # Veicam mail merge
                 if st.button("Veikt Mail Merge"):
                     template_path = "template.docx"  # Pārliecinieties, ka template.docx ir pieejams
