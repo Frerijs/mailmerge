@@ -2,9 +2,9 @@
 
 import streamlit as st
 import pandas as pd
-from docxtpl import DocxTemplate, InlineImage
+from docxtpl import DocxTemplate
 from docx.shared import Mm
-import matplotlib.pyplot as plt  # Pievienots matplotlib imports
+import matplotlib.pyplot as plt  # Importējam matplotlib
 import os
 import io
 import csv
@@ -23,27 +23,14 @@ def perform_mail_merge(template_path, csv_data, output_path):
     """
     template = DocxTemplate(template_path)
     
+    # Pārvēršam CSV datus par sarakstu vārdnīcām
+    records = csv_data.to_dict(orient='records')
+
     context = {
-        'records': csv_data.to_dict(orient='records')
+        'records': records,
+        # Pievienojam lappuses pārtraukuma marķieri, izmantojot Unicode simbola kodu
+        'page_break': '\n\n\n'  # Varat izmantot arī citu metodi lappuses pārtraukuma ievietošanai
     }
-
-    # Pievieno lappuses pārtraukumu starp ierakstiem
-    # Lai to izdarītu, šablonā jāizmanto Jinja2 loop ar lappuses pārtraukumu pēc katra ieraksta
-    # Piemēram:
-    # {% for record in records %}
-    #   [Šeit ieraksta saturs]
-    #   {% if not loop.last %}
-    #     {{ page_break }}
-    #   {% endif %}
-    # {% endfor %}
-
-    # Definējam lappuses pārtraukuma funkciju
-    # Šī funkcija var būt nepieciešama, lai pievienotu lappuses pārtraukumu. Tā var tikt izmantota šablonā.
-    def page_break():
-        # Piemēram, varat izmantot kādu simbolu vai attēlu kā vietturs lappuses pārtraukumam
-        return '\n\n\n'  # Vienkāršs piemērs ar atstarpēm
-
-    context['page_break'] = page_break()
 
     # Renderējam šablonu ar kontekstu
     template.render(context)
