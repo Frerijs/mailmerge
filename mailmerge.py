@@ -150,13 +150,13 @@ def main():
                     output_dir = "output_documents"
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
-                    
+
                     output_path = os.path.join(output_dir, "merged_documents.docx")
                     result = perform_mail_merge(template_path, data, output_path)
-                    
+
                     if result:
                         st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
-                        
+
                         # Parādām lejupielādes saiti
                         with open(output_path, "rb") as f:
                             file_bytes = f.read()
@@ -166,6 +166,8 @@ def main():
                                 file_name="merged_documents.docx",
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             )
+        except pd.errors.ParserError as e:
+            st.error(f"CSV Parsing Kļūda: {e}")
         except Exception as e:
             st.error(f"Kļūda apstrādājot CSV failu: {e}")
 
