@@ -169,10 +169,10 @@ def main():
                             file_name="merged_documents.zip",
                             mime="application/zip"
                         )
-    except pd.errors.ParserError as e:
-        st.error(f"CSV Parsing Kļūda: {e}")
-    except Exception as e:
-        st.error(f"Kļūda apstrādājot CSV failu: {e}")
+        except pd.errors.ParserError as e:
+            st.error(f"CSV Parsing Kļūda: {e}")
+        except Exception as e:
+            st.error(f"Kļūda apstrādājot CSV failu: {e}")
 
 if __name__ == "__main__":
     main()
