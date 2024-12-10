@@ -1,5 +1,3 @@
-# streamlit_app.py
-
 import streamlit as st
 import pandas as pd
 from docx import Document
@@ -105,7 +103,8 @@ def main():
             st.write("### CSV Kolonnas Pirms Pārveides:", data.columns.tolist())
 
             # Automātiska kolonnu nosaukumu pārveide ar regex: aizvieto jebkuru neatbilstīgu rakstzīmi ar zemessvītri
-            data.columns = data.columns.str.replace(r'[^\w]', '_', regex=True)
+            # `[^\w]+` - meklē vienu vai vairākus rakstzīmes, kas nav vārdu rakstzīmes (a-zA-Z0-9_)
+            data.columns = data.columns.str.replace(r'[^\w]+', '_', regex=True)
             st.write("### Atjauninātās Kolonnas Pēc Pārveides:", data.columns.tolist())
 
             # Definējam kolonnu nosaukumu karti
