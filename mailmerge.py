@@ -43,9 +43,14 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                 placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
                 for placeholder in placeholders:
                     if placeholder in paragraph.text:
-                        paragraph.text = paragraph.text.replace(placeholder, str(value))
+                        # Pārbaudām, vai vērtība nav NaN, ja tā ir, aizvietojam ar tukšu stringu
+                        if pd.isna(value):
+                            replacement = ""
+                        else:
+                            replacement = str(value)
+                        paragraph.text = paragraph.text.replace(placeholder, replacement)
                         # Pievienojam diagnostikas ziņojumu
-                        st.write(f"Aizvietots {placeholder} ar {value}")
+                        st.write(f"Aizvietots {placeholder} ar {replacement}")
 
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
@@ -86,7 +91,8 @@ def main():
     
     if uploaded_file is not None:
         try:
-            data = pd.read_csv(uploaded_file)
+            # Nolasām CSV ar pareizu kodējumu
+            data = pd.read_csv(uploaded_file, encoding='utf-8')
             st.write("CSV Saturs:")
             st.dataframe(data)
             
