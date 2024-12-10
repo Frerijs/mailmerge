@@ -3,18 +3,20 @@
 import streamlit as st
 import pandas as pd
 from docxtpl import DocxTemplate
+from docx import Document
+from docx.enum.text import WD_BREAK
 import os
 import csv
 
 def perform_mail_merge(template_path, csv_data, output_path):
     """
     Veic mail merge, izmantojot docxtpl, un saglabā rezultātu vienā .docx failā.
-
+    
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
         csv_data (pd.DataFrame): Pandas DataFrame ar CSV datiem.
         output_path (str): Ceļš uz izvadītāja .docx failu.
-
+    
     Returns:
         str: Izvades faila ceļš.
     """
@@ -50,6 +52,26 @@ def perform_mail_merge(template_path, csv_data, output_path):
         st.error(f"Neizdevās saglabāt izvadīgo dokumentu: {e}")
         return None
 
+    try:
+        # Atveram dokumentu ar python-docx, lai pievienotu lappuses pārtraukumus
+        doc = Document(output_path)
+
+        # Pārvietojam pa visiem paragrafiem un aizvietojam 'PAGE_BREAK' ar lappuses pārtraukumu
+        for para in doc.paragraphs:
+            if 'PAGE_BREAK' in para.text:
+                inline = para.runs
+                for i in range(len(inline)):
+                    if 'PAGE_BREAK' in inline[i].text:
+                        # Aizvietojam marķieri ar lappuses pārtraukumu
+                        inline[i].text = inline[i].text.replace('PAGE_BREAK', '')
+                        para.runs[i].add_break(WD_BREAK.PAGE)
+
+        # Saglabājam gala dokumentu
+        doc.save(output_path)
+    except Exception as e:
+        st.error(f"Neizdevās pievienot lappuses pārtraukumu: {e}")
+        return None
+
     return output_path
 
 def main():
@@ -63,10 +85,10 @@ def main():
     if uploaded_file is not None:
         try:
             # Nolasām CSV ar pareizu kodējumu un Python engine, lai labāk apstrādātu multi-line fields
-            data = pd.read_csv(uploaded_file, encoding='utf-8', engine='python', quoting=csv.QUOTE_ALL)
+            data = pd.read_csv(uploaded_file, encoding='utf-8', engine='python', quoting=csv.QUOTE_ALL, skip_blank_lines=False)
             st.write("### CSV Saturs:")
             st.dataframe(data)
-            
+
             # Pārbaudām CSV kolonnas nosaukumus pirms pārveides
             st.write("### CSV Kolonnas Pirms Pārveides:", data.columns.tolist())
 
@@ -78,7 +100,20 @@ def main():
             # Definējam kolonnu nosaukumu karti
             csv_column_to_placeholder = {
                 "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
-                "Adrese": "Adrese"
+                "Adrese": "Adrese",
+                "kadapz": "kadapz",
+                "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
+                "uzruna": "uzruna",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1",
+                "Uzņēmums": "Uzņēmums",
+                "Vieta": "Vieta",
+                "Pagasts_un_Novads": "Pagasts_un_Novads",
+                "Tikšanās_vieta_un_laiks": "Tikšanās_vieta_un_laiks",
+                "Tikšanās_datums": "Tikšanās_datums",
+                "Mērnieks_Vārds_Uzvārds": "Mērnieks_Vārds_Uzvārds",
+                "Mērnieks_Telefons": "Mērnieks_Telefons",
+                "Sagatavotājs_Vārds_Uzvārds_Telefons": "Sagatavotājs_Vārds_Uzvārds_Telefons",
+                "Sagatavotājs_e_pasts": "Sagatavotājs_e_pasts"
             }
 
             # Veicam kolonnu nosaukumu pārveidi ar manuālu kartēšanu
