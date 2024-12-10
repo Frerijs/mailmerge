@@ -4,11 +4,12 @@ import streamlit as st
 import pandas as pd
 from docxtpl import DocxTemplate
 from docx import Document
-from docx.enum.text import WD_BREAK
 import os
 import csv  # Šis imports ir nepieciešams, lai izmantotu csv moduli
 from io import BytesIO
 import zipfile
+from docxcompose.composer import Composer
+from docx import Document
 
 def clean_address_field(address):
     """
@@ -74,27 +75,18 @@ def merge_word_documents(file_paths, merged_output_path):
         st.error("Nav dokumentu, kas varētu tikt apvienoti.")
         return
 
-    merged_document = Document()
-
-    for idx, file in enumerate(file_paths):
-        try:
-            sub_doc = Document(file)
-            # Pievienojam saturu no sub_doc
-            for element in sub_doc.element.body:
-                merged_document.element.body.append(element)
-            
-            # Pievienojam lapu pārtraukumu, ja tas nav pēdējais dokuments
-            if idx < len(file_paths) - 1:
-                merged_document.add_page_break()
-        except Exception as e:
-            st.error(f"Kļūda apvienojot dokumentu {file}: {e}")
-            continue
-
     try:
-        merged_document.save(merged_output_path)
+        master = Document(file_paths[0])
+        composer = Composer(master)
+
+        for file_path in file_paths[1:]:
+            doc = Document(file_path)
+            composer.append(doc)
+
+        composer.save(merged_output_path)
         st.success(f"Apvienotais dokuments saglabāts kā: {merged_output_path}")
     except Exception as e:
-        st.error(f"Kļūda saglabājot apvienoto dokumentu: {e}")
+        st.error(f"Kļūda apvienojot dokumentus: {e}")
 
 def create_zip_file(file_paths):
     """
@@ -114,7 +106,7 @@ def create_zip_file(file_paths):
     return zip_buffer
 
 def main():
-    st.title("Mail Merge Lietotne ar docxtpl")
+    st.title("Mail Merge Lietotne ar docxtpl un docxcompose")
 
     st.sidebar.header("Iestatījumi")
 
@@ -194,12 +186,14 @@ def main():
                     if output_paths:
                         st.success(f"Mail merge veiksmīgi pabeigts! Izveidotie dokumenti: {len(output_paths)}")
                         
-                        # Izveidojam ZIP failu ar izveidotajiem dokumentiem
-                        # Pievienojam apvienoto dokumentu
+                        # Izveidojam apvienoto dokumentu ar docxcompose
                         merged_document_path = os.path.join(output_dir, "apvienotais_dokuments.docx")
                         merge_word_documents(output_paths, merged_document_path)
+
+                        # Sagatavojam sarakstu ar visiem dokumentiem, ieskaitot apvienoto
                         output_paths_with_merged = output_paths + [merged_document_path]
 
+                        # Izveidojam ZIP failu ar visiem dokumentiem
                         zip_buffer = create_zip_file(output_paths_with_merged)
                         
                         st.download_button(
