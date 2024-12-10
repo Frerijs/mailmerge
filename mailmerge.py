@@ -18,7 +18,7 @@ def clear_document(doc):
 
 def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     """
-    Veic mail merge, izmantojot Word šablonu un CSV datiem, un saglabā visus rezultātus vienā .docx failā.
+    Veic mail merge, izmantojot Word šablonu un CSV datus, un saglabā visus rezultātus vienā .docx failā.
 
     Args:
         template_path (str): Ceļš uz Word šablonu (`template.docx`).
@@ -28,6 +28,9 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     Returns:
         str: Izvades faila ceļš.
     """
+    # Nolasām šablonu
+    template_doc = Document(template_path)
+
     # Inicializē izvadītāja dokumentu un noņem visus saturus
     output_doc = Document()
     clear_document(output_doc)
@@ -35,61 +38,28 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
     first_record = True
 
     for index, row in csv_data.iterrows():
-        # Nolasām šablonu
-        doc = Document(template_path)
-        
+        # Kopējam šablonu katram ierakstam
+        for element in template_doc.element.body:
+            output_doc.element.body.append(element.clone())
+
         # Aizvietojam placeholderus ar CSV datiem
-        for paragraph in doc.paragraphs:
+        for paragraph in output_doc.paragraphs[-len(template_doc.paragraphs):]:
             for key, value in row.items():
-                # Definējam gan {{key}}, gan {[key]} formātus
                 placeholders = [f'{{{{{key}}}}}', f'{{[{key}]}}']
                 for placeholder in placeholders:
                     if placeholder in paragraph.text:
-                        # Pārbaudām, vai vērtība nav NaN, ja tā ir, aizvietojam ar "nav"
-                        if pd.isna(value):
-                            replacement = "nav"
-                        else:
-                            replacement = str(value)
-                        paragraph.text = paragraph.text.replace(placeholder, replacement)
-                        # Pievienojam diagnostikas ziņojumu
-                        st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
-                    else:
-                        # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
-                        st.write(f"Vietturs `{placeholder}` netika atrasts paragrafā.")
+                        replacement = "nav" if pd.isna(value) else str(value)
+                        # Veicam aizvietošanu katrā run
+                        for run in paragraph.runs:
+                            if placeholder in run.text:
+                                run.text = run.text.replace(placeholder, replacement)
+                                st.write(f"Aizvietots `{placeholder}` ar `{replacement}`")
 
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
             output_doc.add_page_break()
         else:
             first_record = False
-
-        # Pievienojam saturu manuāli
-        for para in doc.paragraphs:
-            # Izveidojam jaunu paragrafu ar tādu pašu stilu un tekstu
-            p = output_doc.add_paragraph()
-            p.style = para.style
-            for run in para.runs:
-                r = p.add_run(run.text)
-                r.bold = run.bold
-                r.italic = run.italic
-                r.underline = run.underline
-
-        for table in doc.tables:
-            try:
-                if len(table.columns) == 0:
-                    st.warning("Tabula bez kolonnu. Pārtraucam tabulas apstrādi.")
-                    continue
-
-                table_copy = output_doc.add_table(rows=0, cols=len(table.columns))
-                for row_table in table.rows:
-                    new_row = table_copy.add_row().cells
-                    for i, cell in enumerate(row_table.cells):
-                        if i < len(new_row):
-                            new_row[i].text = cell.text
-                        else:
-                            st.warning(f"Pārsniegts kolonnu skaits tabulā. Rindas numurs: {index}, Šūnu numurs: {i}")
-            except Exception as e:
-                st.error(f"Kļūda apstrādājot tabulu: {e}")
 
     # Saglabājam izvadītāja dokumentu
     output_doc.save(output_path)
