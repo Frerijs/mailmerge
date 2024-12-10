@@ -1,3 +1,5 @@
+# streamlit_app.py
+
 import streamlit as st
 import pandas as pd
 from docx import Document
@@ -101,14 +103,14 @@ def main():
             data.columns = data.columns.str.replace(' ', '_').str.replace('/', '_').str.replace('\n', '_')
             st.write("Atjauninātās Kolonnas:", data.columns)
             
-            # Definējam CSV kolonnu nosaukumu un placeholder atbilstību
+            # Definējam placeholder atbilstību (no sanitized column names uz tiem pašiem, lai nav nepieciešama kartēšana)
             csv_column_to_placeholder = {
                 "Vārds_uzvārds_nosaukums": "Vārds_uzvārds_nosaukums",
                 "Adrese": "Adrese",
                 "kadapz": "kadapz",
                 "Nekustamā_īpašuma_nosaukums": "Nekustamā_īpašuma_nosaukums",
                 "uzruna": "uzruna",
-                "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
+                "Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
                 "Uzņēmums": "Uzņēmums",
                 "Vieta": "Vieta",
                 "Pagasts_un_Novads": "Pagasts_un_Novads",
