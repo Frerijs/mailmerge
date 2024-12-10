@@ -17,7 +17,7 @@ def perform_mail_merge_with_docxtpl(template_path, csv_data, output_path):
         output_path (str): Ceļš uz izvadītāja .docx failu.
     
     Returns:
-        str: Izvades faila ceļš vai None, ja kļūda radās.
+        str: Izvades faila ceļš.
     """
     try:
         # Ielādējam šablonu
@@ -141,8 +141,8 @@ def main():
                                 file_name="merged_documents.docx",
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             )
-        except Exception as e:
-            st.error(f"Kļūda apstrādājot CSV failu: {e}")
+    except Exception as e:
+        st.error(f"Kļūda apstrādājot CSV failu: {e}")
 
 if __name__ == "__main__":
     main()
