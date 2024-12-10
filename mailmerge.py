@@ -83,7 +83,9 @@ def main():
             }
 
             # Veicam kolonnu nosaukumu pārveidi ar manuālu kartēšanu
-            data.rename(columns=csv_column_to_placeholder, inplace=True)
+            data.rename(columns={
+                'Atrasts_Zemes_Vienības_Kadastra_Apzīmējums_lapā_1': 'Atrasts_Zemes_Vienības_Kadastra_Apzīmēju'
+            }, inplace=True)
             st.write("### Kolonnu Nosaukumi Pēc Manuālās Pārveides:", data.columns.tolist())
 
             # Aizvietojam visus NaN ar "nav"
