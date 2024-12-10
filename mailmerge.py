@@ -54,7 +54,7 @@ def perform_mail_merge_single_doc(template_path, csv_data, output_path):
                     else:
                         # Pievienojam diagnostikas ziņojumu, ja vietturs netiek atrasts
                         st.write(f"Vietturs {placeholder} netika atrasts paragrafā.")
-        
+
         # Pievienojam lappuses pārtraukumu, ja nav pirmais ieraksts
         if not first_record:
             output_doc.add_page_break()
@@ -99,43 +99,74 @@ def main():
             st.write("CSV Saturs:")
             st.dataframe(data)
             
-            # Parādām direktorijas saturu (diagnostika)
-            st.write("Current working directory:", os.getcwd())
-            st.write("Files in directory:", os.listdir('.'))
+            # Pārbaudām CSV kolonnas nosaukumus
+            st.write("CSV Kolonnas:", data.columns)
             
-            # Parādām dažas vizualizācijas
-            st.header("Datu Vizualizācijas")
+            # Definējam CSV kolonnu nosaukumu un placeholder atbilstību
+            csv_column_to_placeholder = {
+                "Vārds uzvārds/\nosaukums": "Vārds_uzvārds_nosaukums",
+                "Adrese": "Adrese",
+                "kadapz": "kadapz",
+                "Nekustamā īpašuma nosaukums": "Nekustamā_īpašuma_nosaukums",
+                "uzruna": "uzruna",
+                "Atrasts Zemes Vienības Kadastra Apzīmējums lapā 1": "Atrasts_Zemes_Vienības_Kadastra_Apzīmēju",
+                "Uzņēmums": "Uzņēmums",
+                "Vieta": "Vieta",
+                "Pagasts_un_Novads": "Pagasts_un_Novads",
+                "Tikšanās_vieta_un_laiks": "Tikšanās_vieta_un_laiks",
+                "Tikšanās_datums": "Tikšanās_datums",
+                "Mērnieks_Vārds_Uzvārds": "Mērnieks_Vārds_Uzvārds",
+                "Mērnieks_Telefons": "Mērnieks_Telefons",
+                "Sagatavotājs_Vārds_Uzvārds_Telefons": "Sagatavotājs_Vārds_Uzvārds_Telefons",
+                "Sagatavotājs_e_pasts": "Sagatavotājs_e_pasts"
+            }
             
-            numeric_columns = data.select_dtypes(include=['int64', 'float64']).columns
-            if not numeric_columns.empty:
-                selected_column = st.selectbox("Izvēlieties kolonnas vizualizācijai", numeric_columns)
-                fig, ax = plt.subplots()
-                data[selected_column].hist(ax=ax)
-                st.pyplot(fig)
+            # Pārbaudām, vai visi nepieciešamie kolonnu nosaukumi ir presenti
+            missing_columns = set(csv_column_to_placeholder.keys()) - set(data.columns)
+            if missing_columns:
+                st.error(f"Trūkst kolonnas: {missing_columns}")
             else:
-                st.write("Nav pieejamu skaitlisku kolonnu vizualizācijai.")
-            
-            # Veicam mail merge
-            if st.button("Veikt Mail Merge"):
-                template_path = "template.docx"  # Pārliecinieties, ka template.docx ir pieejams
-                output_dir = "output_documents"
-                if not os.path.exists(output_dir):
-                    os.makedirs(output_dir)
+                # Veicam kolonnu nosaukumu pārveidi
+                data.rename(columns=csv_column_to_placeholder, inplace=True)
+                st.write("Atjauninātās Kolonnas:", data.columns)
                 
-                output_path = os.path.join(output_dir, "merged_documents.docx")
-                perform_mail_merge_single_doc(template_path, data, output_path)
+                # Parādām direktorijas saturu (diagnostika)
+                st.write("Current working directory:", os.getcwd())
+                st.write("Files in directory:", os.listdir('.'))
                 
-                st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
+                # Parādām dažas vizualizācijas
+                st.header("Datu Vizualizācijas")
                 
-                # Parādām lejupielādes saiti
-                with open(output_path, "rb") as f:
-                    file_bytes = f.read()
-                    st.download_button(
-                        label="Lejupielādēt Merged Dokumentu",
-                        data=file_bytes,
-                        file_name="merged_documents.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
+                numeric_columns = data.select_dtypes(include=['int64', 'float64']).columns
+                if not numeric_columns.empty:
+                    selected_column = st.selectbox("Izvēlieties kolonnas vizualizācijai", numeric_columns)
+                    fig, ax = plt.subplots()
+                    data[selected_column].hist(ax=ax)
+                    st.pyplot(fig)
+                else:
+                    st.write("Nav pieejamu skaitlisku kolonnu vizualizācijai.")
+                
+                # Veicam mail merge
+                if st.button("Veikt Mail Merge"):
+                    template_path = "template.docx"  # Pārliecinieties, ka template.docx ir pieejams
+                    output_dir = "output_documents"
+                    if not os.path.exists(output_dir):
+                        os.makedirs(output_dir)
+                    
+                    output_path = os.path.join(output_dir, "merged_documents.docx")
+                    perform_mail_merge_single_doc(template_path, data, output_path)
+                    
+                    st.success(f"Mail merge veiksmīgi pabeigts! Dokumenti saglabāti failā: {output_path}")
+                    
+                    # Parādām lejupielādes saiti
+                    with open(output_path, "rb") as f:
+                        file_bytes = f.read()
+                        st.download_button(
+                            label="Lejupielādēt Merged Dokumentu",
+                            data=file_bytes,
+                            file_name="merged_documents.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
         except Exception as e:
             st.error(f"Kļūda apstrādājot CSV failu: {e}")
 
